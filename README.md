@@ -1,27 +1,43 @@
-# Quick Incremental Copy
-Implementation of "cp -I" linux command
+# Incremental Copy CLI
+
+A C implementation of a fast **incremental file and directory copy utility**.
+The tool traverses a source filesystem tree and synchronizes it with a destination
+by copying only new or modified files, avoiding unnecessary I/O.
+
+The implementation relies on filesystem metadata (e.g. inode information) to
+detect identical files efficiently.
 
 **Goals/Tasks**
 
 The goal of this project is to copy directories/files quicker than the simple `cp` command. 
 
-**Summary**
+## Summary
 
-The programm has two arguments: the source (A) file/directory and the destination (T) file/directory. The programm traverses through A, reads the info of the i-nodes and for every `a i-node` in A it searces the corresponding `t i-node` in T.
-We distinguish 4 cases: 
-1. The `t` doesn't exist in T: in this case the `t` has to be created in the right place inside T and the `a` to be copied in the `t`. If the i-node refers to a file, we also have to copy the data of the file. 
-2. The `t` exists in T and is the same as the `a` in A: in this case we do nothing. This is the case where the quick incremental copy "wins" the simple `cp`.
-3. The `t` exists in T, but there is no corresponding in `a` in A: in this case the file from A was deleted and we have to update the T. 
-4. The `t` exists in T and it's not the same as the `a` in A: in this case we have to copy the content of the `a i-node` to `t i-node`.
+The program takes two arguments: a **source** path (A) and a **destination**
+path (T). It traverses the source filesystem tree and incrementally
+synchronizes it with the destination by comparing filesystem metadata
+(inodes).
 
-  When 2 files are not the same:
-  - obviously, we don't read the content of the files, because this is time-consuming.
-  - if a refers to a file and t refers to a directory
-  - if a and t refer to directories, we check their content recursively
-  - if a and t refer to files with different size
-  - if a and t refer to files with the same size but the t is older than a 
-  
-If the i-nodes `a` and `t` are referring to directories, we have to recursively do the above steps.
+For each entry in the source tree, the corresponding entry in the destination
+is examined and one of the following actions is taken:
+
+1. **Entry does not exist in T**  
+   The entry is created in T. If it is a file, its contents are copied.
+
+2. **Entry exists and is identical**  
+   No action is taken. This is the case where incremental copying outperforms
+   a naive `cp`.
+
+3. **Entry exists in T but not in A**  
+   The entry has been removed from the source and is deleted from T.
+
+4. **Entry exists but differs**  
+   The destination entry is updated by copying the source contents.
+
+File equality is determined without reading file contents, using metadata such
+as file type, size, and modification time. If both entries are directories,
+the comparison is applied recursively.
+
 
 **Compilation**
 
